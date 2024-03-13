@@ -4,6 +4,9 @@ import { MessagePattern, Payload } from "@nestjs/microservices";
 import { BOOKSSTOCK_CMD } from "src/constants";
 import { BooksStock } from "./books-stock.schema";
 import { addBookStock } from "./interfaces/add-book-stock.interface";
+import { PaginationInterface, PaginationResponseInterface } from "src/interfaces/pagination.interface";
+import { FindOptionsInterface } from "src/interfaces/find-options.interface";
+import { updateBooksStockInterface } from "./interfaces/update-books-stock.interface";
 
 @Controller('books-stock')
 export class BooksStockMicroservice {
@@ -18,6 +21,7 @@ export class BooksStockMicroservice {
         method: 'get-book-stock-by-id'
     })
     async getBookStockById(@Payload() bookId: string): Promise<BooksStock> {
+        this.logger.log(bookId)
         try {
             return this.booksStockService.getBookById(bookId)
         } catch (e) {
@@ -87,6 +91,82 @@ export class BooksStockMicroservice {
         } catch (e) {
             this.logger.error(
                 `catch on add-book-in-stock: ${e?.message ?? JSON.stringify(e)}`,
+            )
+            throw new InternalServerErrorException({
+                message: e?.message ?? e,
+            })
+        }
+    }
+
+    @MessagePattern({
+        cmd: BOOKSSTOCK_CMD,
+        method: 'delete-book-in-stock'
+    })
+    async deleteBookInStock(@Payload() bookId: string): Promise<void> {
+        try {
+            await this.booksStockService.getBooksStockModel().deleteOne({ bookId })
+        } catch (e) {
+            this.logger.error(
+                `catch on delete-book-in-stock: ${e?.message ?? JSON.stringify(e)}`,
+            )
+            throw new InternalServerErrorException({
+                message: e?.message ?? e,
+            })
+        }
+    }
+
+    @MessagePattern({
+        cmd: BOOKSSTOCK_CMD,
+        method: 'getPagination',
+    })
+    async getPagination(
+        @Payload()
+        payload: PaginationInterface & FindOptionsInterface<BooksStock>,
+    ): Promise<PaginationResponseInterface<BooksStock>> {
+        const { filter, page, perPage, sort } = payload
+
+        try {
+            const [records, count] = await this.booksStockService.getPagination(
+                filter,
+                { page, perPage },
+                sort,
+            )
+
+            return {
+                page,
+                perPage,
+                count,
+                records,
+            }
+        } catch (e) {
+            this.logger.error(
+                `catch on getPagination: ${e?.message ?? JSON.stringify(e)}`,
+            )
+            throw new InternalServerErrorException({
+                message: e?.message ?? e,
+            })
+        }
+    }
+
+    @MessagePattern({
+        cmd: BOOKSSTOCK_CMD,
+        method: 'update-stock'
+    })
+    async updateStock(@Payload() payload: { bookId: string, body: updateBooksStockInterface }): Promise<void> {
+        const { bookId, body } = payload
+        try {
+            await this.booksStockService.getBooksStockModel().updateOne(
+                { bookId },
+                {
+                    quantity: body.quantity,
+                    quantityBought: body.quantityBought,
+                    totalOrder: body.totalOrder,
+                    lastOrderAt: new Date(),
+                },
+            )
+        } catch (e) {
+            this.logger.error(
+                `catch on updateStock: ${e?.message ?? JSON.stringify(e)}`,
             )
             throw new InternalServerErrorException({
                 message: e?.message ?? e,

@@ -1,5 +1,6 @@
 export interface BooksStockInterface {
     bookName: string
+    category: string
     quantity: number
     totalQuantity: number
     quantityBought: number

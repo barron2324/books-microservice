@@ -20,6 +20,12 @@ export class BooksStock extends Document {
     bookName: string
 
     @Prop({
+        type: String,
+        required: true
+    })
+    category: string
+
+    @Prop({
         type: Number,
         required: true
     })

@@ -4,6 +4,8 @@ import { MessagePattern, Payload } from "@nestjs/microservices";
 import { BOOKS_CMD } from "src/constants";
 import { BooksInterface } from "./interfaces/books.interface";
 import { Books } from "./books.schema";
+import { PaginationInterface, PaginationResponseInterface } from "src/interfaces/pagination.interface";
+import { FindOptionsInterface } from "src/interfaces/find-options.interface";
 
 @Controller('books')
 export class BooksMicroserive {
@@ -20,7 +22,6 @@ export class BooksMicroserive {
     async createBooks(
         @Payload() payload: BooksInterface,
     ): Promise<void> {
-        this.logger.log(payload)
         try {
             await this.booksService.getBooksModel().create(payload)
         } catch (e) {
@@ -70,6 +71,57 @@ export class BooksMicroserive {
             return await this.booksService.getAllBooks()
         } catch (e) {
             this.logger.error(`catch on get-all-books: ${e?.message ?? JSON.stringify(e)}`)
+            throw new InternalServerErrorException({
+                message: e?.message ?? e,
+            })
+        }
+    }
+
+    @MessagePattern({
+        cmd: BOOKS_CMD,
+        method: 'delete-book'
+    })
+    async deleteBook(@Payload() bookId: string): Promise<void> {
+        this.logger.log(bookId)
+        try {
+            await this.booksService.getBooksModel().deleteOne({
+                bookId
+            })
+        } catch (e) {
+            this.logger.error(`catch on delete-book: ${e?.message ?? JSON.stringify(e)}`)
+            throw new InternalServerErrorException({
+                message: e?.message ?? e,
+            })
+        }
+    }
+
+    @MessagePattern({
+        cmd: BOOKS_CMD,
+        method: 'getPagination',
+    })
+    async getPagination(
+        @Payload()
+        payload: PaginationInterface & FindOptionsInterface<Books>,
+    ): Promise<PaginationResponseInterface<Books>> {
+        const { filter, page, perPage, sort } = payload
+
+        try {
+            const [records, count] = await this.booksService.getPagination(
+                filter,
+                { page, perPage },
+                sort,
+            )
+
+            return {
+                page,
+                perPage,
+                count,
+                records,
+            }
+        } catch (e) {
+            this.logger.error(
+                `catch on getPagination: ${e?.message ?? JSON.stringify(e)}`,
+            )
             throw new InternalServerErrorException({
                 message: e?.message ?? e,
             })

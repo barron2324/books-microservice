@@ -27,6 +27,13 @@ export class Books extends Document {
 
     @Prop({
         type: String,
+        required: true,
+        index: true
+    })
+    publisher: string
+
+    @Prop({
+        type: String,
         default: null,
     })
     imageUrl?: string
